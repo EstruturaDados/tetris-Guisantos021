@@ -1,0 +1,286 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define TAMANHO_FILA 5
+#define TAMANHO_PILHA 3
+#define MAX_PECAS 1000  // Para controlar IDs únicos
+
+// Estrutura para representar uma peça do Tetris
+typedef struct {
+    char nome;
+    int id;
+} Peca;
+
+// Estrutura para representar a fila circular de peças
+typedef struct {
+    Peca pecas[TAMANHO_FILA];
+    int frente;
+    int tras;
+    int tamanho;
+} FilaPecas;
+
+// Estrutura para representar a pilha de peças reservadas
+typedef struct {
+    Peca pecas[TAMANHO_PILHA];
+    int topo;
+    int tamanho;
+} PilhaReserva;
+
+// Protótipos das funções
+void inicializarFila(FilaPecas *fila);
+void inicializarPilha(PilhaReserva *pilha);
+Peca gerarPeca(int *proximo_id);
+int filaVazia(FilaPecas *fila);
+int filaCheia(FilaPecas *fila);
+int pilhaVazia(PilhaReserva *pilha);
+int pilhaCheia(PilhaReserva *pilha);
+int enqueue(FilaPecas *fila, Peca peca);
+Peca dequeue(FilaPecas *fila);
+int push(PilhaReserva *pilha, Peca peca);
+Peca pop(PilhaReserva *pilha);
+void exibirEstado(FilaPecas *fila, PilhaReserva *pilha);
+void exibirMenu();
+
+int main() {
+    FilaPecas fila;
+    PilhaReserva pilha;
+    int opcao;
+    int proximo_id = 0;  // Contador global para IDs únicos
+    
+    // Inicializar estruturas
+    inicializarFila(&fila);
+    inicializarPilha(&pilha);
+    
+    // Semente para geração aleatória
+    srand(time(NULL));
+    
+    // Preencher a fila inicial com 5 peças
+    for (int i = 0; i < TAMANHO_FILA; i++) {
+        Peca nova_peca = gerarPeca(&proximo_id);
+        enqueue(&fila, nova_peca);
+    }
+    
+    printf("=== Tetris Stack - Gerenciador de Peças ===\n\n");
+    
+    do {
+        // Exibir estado atual
+        exibirEstado(&fila, &pilha);
+        printf("\n");
+        
+        // Exibir menu de opções
+        exibirMenu();
+        
+        // Ler opção do usuário
+        printf("Opção: ");
+        scanf("%d", &opcao);
+        
+        switch (opcao) {
+            case 0:
+                printf("Saindo do jogo...\n");
+                break;
+                
+            case 1:
+                // Jogar peça (remover da frente da fila)
+                if (!filaVazia(&fila)) {
+                    Peca peca_jogada = dequeue(&fila);
+                    printf("Peça jogada: [%c %d]\n", peca_jogada.nome, peca_jogada.id);
+                    
+                    // Gerar nova peça para manter fila cheia
+                    Peca nova_peca = gerarPeca(&proximo_id);
+                    if (enqueue(&fila, nova_peca)) {
+                        printf("Nova peça gerada: [%c %d]\n", nova_peca.nome, nova_peca.id);
+                    }
+                } else {
+                    printf("Erro: Fila vazia! Não há peças para jogar.\n");
+                }
+                break;
+                
+            case 2:
+                // Reservar peça (mover da fila para a pilha)
+                if (!filaVazia(&fila)) {
+                    if (!pilhaCheia(&pilha)) {
+                        Peca peca_reservada = dequeue(&fila);
+                        if (push(&pilha, peca_reservada)) {
+                            printf("Peça reservada: [%c %d]\n", peca_reservada.nome, peca_reservada.id);
+                            
+                            // Gerar nova peça para manter fila cheia
+                            Peca nova_peca = gerarPeca(&proximo_id);
+                            if (enqueue(&fila, nova_peca)) {
+                                printf("Nova peça gerada: [%c %d]\n", nova_peca.nome, nova_peca.id);
+                            }
+                        }
+                    } else {
+                        printf("Erro: Pilha de reserva cheia! Não é possível reservar mais peças.\n");
+                    }
+                } else {
+                    printf("Erro: Fila vazia! Não há peças para reservar.\n");
+                }
+                break;
+                
+            case 3:
+                // Usar peça reservada (remover do topo da pilha)
+                if (!pilhaVazia(&pilha)) {
+                    Peca peca_usada = pop(&pilha);
+                    printf("Peça reservada usada: [%c %d]\n", peca_usada.nome, peca_usada.id);
+                } else {
+                    printf("Erro: Pilha de reserva vazia! Não há peças reservadas para usar.\n");
+                }
+                break;
+                
+            default:
+                printf("Opção inválida! Tente novamente.\n");
+                break;
+        }
+        
+        printf("\n");
+        
+    } while (opcao != 0);
+    
+    return 0;
+}
+
+// Inicializa a fila com valores padrão
+void inicializarFila(FilaPecas *fila) {
+    fila->frente = 0;
+    fila->tras = -1;
+    fila->tamanho = 0;
+}
+
+// Inicializa a pilha com valores padrão
+void inicializarPilha(PilhaReserva *pilha) {
+    pilha->topo = -1;
+    pilha->tamanho = 0;
+}
+
+// Gera uma peça aleatória com ID único
+Peca gerarPeca(int *proximo_id) {
+    Peca nova_peca;
+    
+    // Tipos de peças disponíveis
+    char tipos[] = {'I', 'O', 'T', 'L'};
+    int num_tipos = 4;
+    
+    // Escolher tipo aleatório
+    nova_peca.nome = tipos[rand() % num_tipos];
+    
+    // Atribuir ID único
+    nova_peca.id = (*proximo_id)++;
+    
+    return nova_peca;
+}
+
+// Verifica se a fila está vazia
+int filaVazia(FilaPecas *fila) {
+    return fila->tamanho == 0;
+}
+
+// Verifica se a fila está cheia
+int filaCheia(FilaPecas *fila) {
+    return fila->tamanho == TAMANHO_FILA;
+}
+
+// Verifica se a pilha está vazia
+int pilhaVazia(PilhaReserva *pilha) {
+    return pilha->tamanho == 0;
+}
+
+// Verifica se a pilha está cheia
+int pilhaCheia(PilhaReserva *pilha) {
+    return pilha->tamanho == TAMANHO_PILHA;
+}
+
+// Adiciona uma peça ao final da fila (enqueue)
+int enqueue(FilaPecas *fila, Peca peca) {
+    if (filaCheia(fila)) {
+        return 0;  // Falha
+    }
+    
+    // Usando fila circular
+    fila->tras = (fila->tras + 1) % TAMANHO_FILA;
+    fila->pecas[fila->tras] = peca;
+    fila->tamanho++;
+    
+    return 1;  // Sucesso
+}
+
+// Remove e retorna a peça da frente da fila (dequeue)
+Peca dequeue(FilaPecas *fila) {
+    Peca peca_vazia = {' ', -1};  // Peça inválida para retorno de erro
+    
+    if (filaVazia(fila)) {
+        return peca_vazia;
+    }
+    
+    Peca peca_removida = fila->pecas[fila->frente];
+    fila->frente = (fila->frente + 1) % TAMANHO_FILA;
+    fila->tamanho--;
+    
+    return peca_removida;
+}
+
+// Adiciona uma peça ao topo da pilha (push)
+int push(PilhaReserva *pilha, Peca peca) {
+    if (pilhaCheia(pilha)) {
+        return 0;  // Falha
+    }
+    
+    pilha->topo++;
+    pilha->pecas[pilha->topo] = peca;
+    pilha->tamanho++;
+    
+    return 1;  // Sucesso
+}
+
+// Remove e retorna a peça do topo da pilha (pop)
+Peca pop(PilhaReserva *pilha) {
+    Peca peca_vazia = {' ', -1};  // Peça inválida para retorno de erro
+    
+    if (pilhaVazia(pilha)) {
+        return peca_vazia;
+    }
+    
+    Peca peca_removida = pilha->pecas[pilha->topo];
+    pilha->topo--;
+    pilha->tamanho--;
+    
+    return peca_removida;
+}
+
+// Exibe o estado atual da fila e da pilha
+void exibirEstado(FilaPecas *fila, PilhaReserva *pilha) {
+    printf("Estado atual:\n");
+    printf("Fila de peças\t");
+    
+    if (filaVazia(fila)) {
+        printf("(vazia)");
+    } else {
+        int indice = fila->frente;
+        for (int i = 0; i < fila->tamanho; i++) {
+            printf("[%c %d] ", fila->pecas[indice].nome, fila->pecas[indice].id);
+            indice = (indice + 1) % TAMANHO_FILA;
+        }
+    }
+    
+    printf("\nPilha de reserva\t(Topo -> Base): ");
+    
+    if (pilhaVazia(pilha)) {
+        printf("(vazia)");
+    } else {
+        // Exibir do topo para a base
+        for (int i = pilha->topo; i >= 0; i--) {
+            printf("[%c %d] ", pilha->pecas[i].nome, pilha->pecas[i].id);
+        }
+    }
+    printf("\n");
+}
+
+// Exibe o menu de opções
+void exibirMenu() {
+    printf("Opções de Ação:\n");
+    printf("Código\t Ação\n");
+    printf("1\tJogar peça\n");
+    printf("2\tReservar peça\n");
+    printf("3\tUsar peça reservada\n");
+    printf("0\tSair\n");
+}
