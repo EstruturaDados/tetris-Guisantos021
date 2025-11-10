@@ -1,0 +1,187 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define TAMANHO_FILA 5
+#define MAX_PECAS 100  // Para controlar IDs únicos
+
+// Estrutura para representar uma peça do Tetris
+typedef struct {
+    char nome;
+    int id;
+} Peca;
+
+// Estrutura para representar a fila de peças
+typedef struct {
+    Peca pecas[TAMANHO_FILA];
+    int frente;
+    int tras;
+    int tamanho;
+    int proximo_id;  // Para gerar IDs únicos
+} FilaPecas;
+
+// Protótipos das funções
+void inicializarFila(FilaPecas *fila);
+Peca gerarPeca(FilaPecas *fila);
+int filaVazia(FilaPecas *fila);
+int filaCheia(FilaPecas *fila);
+int enqueue(FilaPecas *fila, Peca peca);
+Peca dequeue(FilaPecas *fila);
+void exibirFila(FilaPecas *fila);
+void exibirMenu();
+
+int main() {
+    FilaPecas fila;
+    int opcao;
+    
+    // Inicializar a fila
+    inicializarFila(&fila);
+    
+    // Preencher a fila inicial com 5 peças
+    for (int i = 0; i < TAMANHO_FILA; i++) {
+        Peca nova_peca = gerarPeca(&fila);
+        enqueue(&fila, nova_peca);
+    }
+    
+    printf("=== Tetris Stack - Fila de Peças Futuras ===\n\n");
+    
+    do {
+        // Exibir estado atual da fila
+        printf("Estado atual da fila:\n");
+        exibirFila(&fila);
+        printf("\n");
+        
+        // Exibir menu de opções
+        exibirMenu();
+        
+        // Ler opção do usuário
+        printf("Digite sua opção: ");
+        scanf("%d", &opcao);
+        
+        switch (opcao) {
+            case 0:
+                printf("Saindo do jogo...\n");
+                break;
+                
+            case 1:
+                // Jogar peça (dequeue)
+                if (!filaVazia(&fila)) {
+                    Peca peca_removida = dequeue(&fila);
+                    printf("Peça jogada: [%c %d]\n", peca_removida.nome, peca_removida.id);
+                } else {
+                    printf("Erro: Fila vazia! Não há peças para jogar.\n");
+                }
+                break;
+                
+            case 2:
+                // Inserir nova peça (enqueue)
+                if (!filaCheia(&fila)) {
+                    Peca nova_peca = gerarPeca(&fila);
+                    if (enqueue(&fila, nova_peca)) {
+                        printf("Nova peça adicionada: [%c %d]\n", nova_peca.nome, nova_peca.id);
+                    }
+                } else {
+                    printf("Erro: Fila cheia! Não é possível adicionar mais peças.\n");
+                }
+                break;
+                
+            default:
+                printf("Opção inválida! Tente novamente.\n");
+                break;
+        }
+        
+        printf("\n");
+        
+    } while (opcao != 0);
+    
+    return 0;
+}
+
+// Inicializa a fila com valores padrão
+void inicializarFila(FilaPecas *fila) {
+    fila->frente = 0;
+    fila->tras = -1;
+    fila->tamanho = 0;
+    fila->proximo_id = 0;
+}
+
+// Gera uma peça aleatória com ID único
+Peca gerarPeca(FilaPecas *fila) {
+    Peca nova_peca;
+    
+    // Tipos de peças disponíveis
+    char tipos[] = {'I', 'O', 'T', 'L'};
+    int num_tipos = 4;
+    
+    // Escolher tipo aleatório
+    nova_peca.nome = tipos[rand() % num_tipos];
+    
+    // Atribuir ID único
+    nova_peca.id = fila->proximo_id++;
+    
+    return nova_peca;
+}
+
+// Verifica se a fila está vazia
+int filaVazia(FilaPecas *fila) {
+    return fila->tamanho == 0;
+}
+
+// Verifica se a fila está cheia
+int filaCheia(FilaPecas *fila) {
+    return fila->tamanho == TAMANHO_FILA;
+}
+
+// Adiciona uma peça ao final da fila (enqueue)
+int enqueue(FilaPecas *fila, Peca peca) {
+    if (filaCheia(fila)) {
+        return 0;  // Falha
+    }
+    
+    // Usando fila circular
+    fila->tras = (fila->tras + 1) % TAMANHO_FILA;
+    fila->pecas[fila->tras] = peca;
+    fila->tamanho++;
+    
+    return 1;  // Sucesso
+}
+
+// Remove e retorna a peça da frente da fila (dequeue)
+Peca dequeue(FilaPecas *fila) {
+    Peca peca_vazia = {' ', -1};  // Peça inválida para retorno de erro
+    
+    if (filaVazia(fila)) {
+        return peca_vazia;
+    }
+    
+    Peca peca_removida = fila->pecas[fila->frente];
+    fila->frente = (fila->frente + 1) % TAMANHO_FILA;
+    fila->tamanho--;
+    
+    return peca_removida;
+}
+
+// Exibe o estado atual da fila
+void exibirFila(FilaPecas *fila) {
+    if (filaVazia(fila)) {
+        printf("Fila vazia!\n");
+        return;
+    }
+    
+    printf("Fila de peças: ");
+    
+    int indice = fila->frente;
+    for (int i = 0; i < fila->tamanho; i++) {
+        printf("[%c %d] ", fila->pecas[indice].nome, fila->pecas[indice].id);
+        indice = (indice + 1) % TAMANHO_FILA;
+    }
+    printf("\n");
+}
+
+// Exibe o menu de opções
+void exibirMenu() {
+    printf("Opções de ação:\n");
+    printf("Código\tAção\n");
+    printf("1\tJogar peça (dequeue)\n");
+    printf("2\tInserir nova peça (enqueue)\n");
+    printf("0\tSair\n");
+}
